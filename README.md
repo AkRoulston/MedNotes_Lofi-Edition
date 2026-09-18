@@ -1,1 +1,0 @@
-# MedNotes_Lofi-Edition

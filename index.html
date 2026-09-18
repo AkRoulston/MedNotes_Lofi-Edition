@@ -485,32 +485,76 @@
             });
         }
 
-        function setupSyncFeature() {
+      // --- SUPABASE REAL-TIME SYNC SETUP ---
+        const SUPABASE_URL = 'https://hzlfzamgzepqvafznjrx.supabase.co/rest/v1/';
+        const SUPABASE_ANON_KEY = 'sb_publishable_9cpibVgeYdtWEypP8vl_1A_hwwBoG3t';
+        
+        // Initialize Supabase client
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function setupSyncFeature() {
             const syncBtn = document.getElementById('syncCloudBtn');
             const syncIcon = document.getElementById('syncIcon');
             const syncText = document.getElementById('syncText');
 
-            syncBtn.addEventListener('click', () => {
+            // 1. Automatically load data from Supabase when opening the app
+            await loadFromCloud();
+
+            // 2. Sync / Save data to Supabase when button is clicked
+            syncBtn.addEventListener('click', async () => {
                 syncIcon.className = "fa-solid fa-spinner fa-spin text-amberGlow";
-                syncText.innerText = "Saving...";
+                syncText.innerText = "Syncing...";
 
-                const documentHtml = document.getElementById('documentContainer').innerHTML;
-                localStorage.setItem('cozy_journal_content', documentHtml);
+                const pagesData = Array.from(document.querySelectorAll('.page-card')).map(card => ({
+                    html: card.innerHTML,
+                    strokes: card._strokes || []
+                }));
 
-                const pagesData = [];
-                document.querySelectorAll('.page-card').forEach(card => {
-                    pagesData.push(card._strokes || []);
-                });
-                localStorage.setItem('cozy_journal_strokes', JSON.stringify(pagesData));
+                const { error } = await supabaseClient
+                    .from('medical_journals') // Make sure this table exists in your Supabase database
+                    .upsert({ id: 'primary_journal', data: pagesData, updated_at: new Date() });
 
-                setTimeout(() => {
+                if (error) {
+                    console.error('Sync error:', error);
+                    syncIcon.className = "fa-solid fa-triangle-exclamation text-terracotta";
+                    syncText.innerText = "Error";
+                } else {
                     syncIcon.className = "fa-solid fa-check text-sage";
-                    syncText.innerText = "Saved!";
+                    syncText.innerText = "Synced!";
                     setTimeout(() => {
                         syncIcon.className = "fa-solid fa-cloud-arrow-up";
-                        syncText.innerText = "Save";
+                        syncText.innerText = "Sync";
                     }, 2000);
-                }, 800);
+                }
+            });
+        }
+
+        async function loadFromCloud() {
+            const { data, error } = await supabaseClient
+                .from('medical_journals')
+                .select('data')
+                .eq('id', 'primary_journal')
+                .single();
+
+            if (error || !data || !data.data) return;
+
+            const docContainer = document.getElementById('documentContainer');
+            docContainer.innerHTML = ''; // Clear default page
+
+            data.data.forEach((pageData, index) => {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = "parchment-page relative min-h-[1100px] w-full rounded p-12 md:p-16 text-mahogany-900 shadow-2xl border border-amberGlow/10 flex flex-col page-card";
+                pageDiv.dataset.pageIndex = index + 1;
+                pageDiv.innerHTML = pageData.html;
+                pageDiv._strokes = pageData.strokes || [];
+                
+                docContainer.appendChild(pageDiv);
+                
+                const canvas = pageDiv.querySelector('canvas.drawing-canvas');
+                if (canvas) {
+                    initCanvas(canvas);
+                    redrawStrokes(pageDiv);
+                }
             });
         }
 

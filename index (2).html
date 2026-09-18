@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark-library">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozy Library Medical Study Journal</title>
+
+    <!-- PWA & Icon Configuration -->
+    <meta name="theme-color" content="#130c08">
+    <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn&s=10">
+    <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn&s=10">
+    
+   <!-- Self-Contained Web App Manifest -->
+<link rel="manifest" href="data:application/manifest+json;utf8,%7B%22name%22%3A%22Cozy%20Library%20Medical%20Journal%22%2C%22short_name%22%3A%22CozyJournal%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23130c08%22%2C%22theme_color%22%3A%22%23130c08%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fencrypted-tbn0.gstatic.com%2Fimages%3Fq%3Dtbn%3AANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn%26s%3D10%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
+    
+    <!-- Firebase Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mahogany: {
+                            900: '#130c08',
+                            800: '#1f150f',
+                            700: '#2b1d14',
+                            600: '#3d281a',
+                            500: '#543926',
+                        },
+                        parchment: {
+                            100: '#fdfbf7',
+                            200: '#f7f2e7',
+                            300: '#ede4d3',
+                            400: '#dfd2bc',
+                        },
+                        amberGlow: '#e8a855',
+                        sage: '#7d9d83',
+                        lilac: '#ac93b8',
+                        ochre: '#c8924e',
+                        terracotta: '#bd6a55'
+                    },
+                    fontFamily: {
+                        serif: ['Playfair Display', 'Georgia', 'serif'],
+                        cinzel: ['Cinzel', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                        handwriting: ['Caveat', 'cursive']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #130c08; }
+        ::-webkit-scrollbar-thumb { background: #2b1d14; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #543926; }
+
+        .parchment-page {
+            background-color: #f6f1e5;
+            background-image: radial-gradient(#d3c6ab 0.75px, transparent 0.75px);
+            background-size: 24px 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 80px rgba(184, 150, 110, 0.12);
+        }
+
+        .light-theme .parchment-page {
+            background-color: #fbf9f5;
+            background-image: radial-gradient(#e5dec9 0.75px, transparent 0.75px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        body.mode-typing .drawing-canvas { pointer-events: none !important; }
+        body.mode-drawing .drawing-canvas { pointer-events: auto !important; cursor: crosshair; }
+        body.mode-drawing.tool-lasso .drawing-canvas { cursor: cell; }
+        body.mode-drawing.tool-eraser .drawing-canvas { cursor: grab; }
+
+        .library-panel {
+            background: rgba(31, 21, 15, 0.95);
+            backdrop-filter: blur(8px);
+            border-color: rgba(232, 168, 85, 0.12);
+        }
+
+        input[type=range].audio-slider {
+            -webkit-appearance: none;
+            background: #2b1d14;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type=range].audio-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #7d9d83;
+            cursor: pointer;
+        }
+
+        .editor-content p:empty::before {
+            content: "Click to start typing...";
+            color: #8c7a6b;
+            font-style: italic;
+        }
+
+        .post-it-note {
+            box-shadow: 4px 4px 15px rgba(0,0,0,0.2);
+            transform: rotate(-1deg);
+            transition: transform 0.1s ease;
+        }
+        .post-it-note:hover {
+            transform: rotate(0deg) scale(1.02);
+            z-index: 25;
+        }
+    </style>
+</head>
+<body class="bg-mahogany-900 text-parchment-200 font-sans min-h-screen flex flex-col overflow-x-hidden transition-colors duration-500 mode-typing" id="appBody">
+
+    <!-- Primary Navigation Header -->
+    <header class="library-panel sticky top-0 z-40 border-b border-mahogany-700 px-4 py-2 shadow-xl flex flex-wrap items-center justify-between gap-3 text-xs">
+        
+        <!-- Left: Branding & Toggle -->
+        <div class="flex items-center gap-3">
+            <button id="toggleSidebarBtn" class="p-1.5 rounded hover:bg-mahogany-700 text-amberGlow transition-colors" title="Toggle Navigation">
+                <i class="fa-solid fa-bars text-sm"></i>
+            </button>
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-mug-hot text-amberGlow text-base"></i>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-cinzel font-bold text-amberGlow tracking-wider text-sm leading-none">COZY LIBRARY</span>
+                        <span class="text-[10px] font-sans px-2 py-0.5 rounded-full bg-mahogany-700/80 text-parchment-300 border border-amberGlow/20">Medical Journal</span>
+                    </div>
+                    <p class="text-[10px] text-parchment-400/60 italic font-serif leading-none mt-0.5">Romantising medical study in antique mahogany warmth</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center-Left: Mode Toggles -->
+        <div class="flex items-center bg-mahogany-900/90 p-0.5 rounded-lg border border-mahogany-700 shadow-inner">
+            <button id="modeTypingBtn" class="px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all bg-amberGlow text-mahogany-900 shadow">
+                <i class="fa-solid fa-keyboard"></i>
+                <span>Typing Mode</span>
+            </button>
+            <button id="modeDrawingBtn" class="px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all text-parchment-300 hover:text-amberGlow">
+                <i class="fa-solid fa-pen-nib"></i>
+                <span>Stylus Drawing</span>
+            </button>
+        </div>
+
+        <!-- Center-Right: Ambient Audio & Timer -->
+        <div class="flex items-center gap-4 bg-mahogany-900/50 px-3 py-1 rounded-lg border border-mahogany-700/50">
+            <div class="flex items-center gap-2" title="Fireplace Ambient Sound">
+                <i class="fa-solid fa-fire text-terracotta"></i>
+                <span class="text-[11px] text-parchment-300">Fireplace</span>
+                <input type="range" id="fireVol" min="0" max="100" value="0" class="audio-slider w-12">
+            </div>
+            <div class="flex items-center gap-2" title="Rain Ambient Sound">
+                <i class="fa-solid fa-cloud-showers-heavy text-sage"></i>
+                <span class="text-[11px] text-parchment-300">Rain</span>
+                <input type="range" id="rainVol" min="0" max="100" value="0" class="audio-slider w-12">
+            </div>
+            <div class="h-4 w-px bg-mahogany-700"></div>
+            <div class="flex items-center gap-2">
+                <i class="fa-regular fa-clock text-amberGlow"></i>
+                <span id="timerDisplay" class="font-mono font-bold text-amberGlow text-xs">60:00</span>
+                <button id="timerToggleBtn" class="px-2 py-0.5 bg-mahogany-700 hover:bg-mahogany-600 rounded text-[11px] font-semibold text-parchment-200">Start</button>
+            </div>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="flex items-center gap-2">
+            <button id="themeToggleBtn" class="px-2.5 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-parchment-200 flex items-center gap-1.5">
+                <i class="fa-solid fa-palette text-ochre"></i>
+                <span id="themeLabel">Library Mode</span>
+            </button>
+            <button id="syncCloudBtn" class="px-2.5 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-sage flex items-center gap-1.5 transition-all">
+                <i class="fa-solid fa-cloud-arrow-up" id="syncIcon"></i>
+                <span id="syncText">Sync</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Workspace -->
+    <div class="flex-1 flex overflow-hidden relative">
+
+        <!-- Sidebar Navigation Tree -->
+        <aside id="sidebar" class="w-64 bg-mahogany-800 border-r border-mahogany-700 flex flex-col transition-all duration-300 z-30 shrink-0">
+            <div class="p-3 border-b border-mahogany-700 flex items-center justify-between">
+                <span class="text-xs font-cinzel font-bold tracking-wider text-amberGlow flex items-center gap-2">
+                    <i class="fa-solid fa-book-bookmark"></i> MEDICAL ARCHIVES
+                </span>
+                <button id="addSubjectBtn" class="px-2 py-0.5 rounded bg-mahogany-700 hover:bg-mahogany-600 text-amberGlow text-[11px] font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Subject
+                </button>
+            </div>
+
+            <div class="p-2 border-b border-mahogany-700/50">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-parchment-400/50"></i>
+                    <input type="text" placeholder="Search lectures, topics..." class="w-full bg-mahogany-900/80 border border-mahogany-700 rounded pl-8 pr-3 py-1 text-xs text-parchment-200 focus:outline-none focus:border-amberGlow/50 placeholder:text-parchment-400/40">
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2 space-y-1" id="treeContainer"></div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="flex-1 flex flex-col bg-mahogany-900/90 relative overflow-y-auto" id="mainWorkspace">
+            
+            <!-- Contextual Formatting Sub-Toolbar -->
+            <div class="library-panel sticky top-0 z-30 border-b border-mahogany-700/80 px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div id="textToolbarGroup" class="flex flex-wrap items-center gap-1">
+                    <div class="flex items-center gap-1 pr-2 border-r border-mahogany-700">
+                        <button data-cmd="bold" class="editor-btn p-1 px-2 rounded hover:bg-mahogany-700 font-bold text-parchment-300" title="Bold">B</button>
+                        <button data-cmd="italic" class="editor-btn p-1 px-2 rounded hover:bg-mahogany-700 italic text-parchment-300" title="Italic">I</button>
+                        <button data-cmd="underline" class="editor-btn p-1 px-2 rounded hover:bg-mahogany-700 underline text-parchment-300" title="Underline">U</button>
+                    </div>
+
+                    <div class="flex items-center gap-1 pr-2 border-r border-mahogany-700 font-sans">
+                        <button data-cmd="formatBlock" data-val="H1" class="editor-btn p-1 px-1.5 rounded hover:bg-mahogany-700 font-bold text-parchment-300">H1</button>
+                        <button data-cmd="formatBlock" data-val="H2" class="editor-btn p-1 px-1.5 rounded hover:bg-mahogany-700 font-bold text-parchment-300">H2</button>
+                        <button data-cmd="formatBlock" data-val="P" class="editor-btn p-1 px-1.5 rounded hover:bg-mahogany-700 text-parchment-300">P</button>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <button id="insertVignetteBtn" class="px-2 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-amberGlow flex items-center gap-1.5 font-semibold">
+                            <i class="fa-solid fa-user-doctor text-xs"></i>
+                            <span>Vignette</span>
+                        </button>
+                        <button id="insertTableBtn" class="px-2 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-sage flex items-center gap-1.5 font-semibold">
+                            <i class="fa-solid fa-table-cells text-xs"></i>
+                            <span>Table</span>
+                        </button>
+                        <button id="insertPostItBtn" class="px-2 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-amber-300 flex items-center gap-1.5 font-semibold">
+                            <i class="fa-solid fa-note-sticky text-xs"></i>
+                            <span>Post-it</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="drawingToolbarGroup" class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1">
+                        <button id="toolPen" class="draw-tool-btn p-1.5 rounded bg-mahogany-700 text-amberGlow" title="Pen"><i class="fa-solid fa-pen"></i></button>
+                        <button id="toolHighlighter" class="draw-tool-btn p-1.5 rounded hover:bg-mahogany-700 text-parchment-300" title="Highlighter"><i class="fa-solid fa-highlighter"></i></button>
+                        <button id="toolLasso" class="draw-tool-btn p-1.5 rounded hover:bg-mahogany-700 text-parchment-300" title="Lasso Selection"><i class="fa-solid fa-vector-square"></i></button>
+                        <button id="toolEraser" class="draw-tool-btn p-1.5 rounded hover:bg-mahogany-700 text-parchment-300" title="Eraser"><i class="fa-solid fa-eraser"></i></button>
+                    </div>
+
+                    <div class="flex items-center gap-2 pl-2 border-l border-mahogany-700">
+                        <input type="color" id="drawColor" value="#2b1d14" class="w-5 h-5 rounded cursor-pointer border-none bg-transparent">
+                        <input type="range" id="drawSize" min="1" max="25" value="3" class="w-16 accent-amberGlow h-1 bg-mahogany-700 rounded cursor-pointer">
+                        <button id="clearCanvasBtn" class="p-1 px-2 rounded hover:bg-terracotta/20 text-terracotta text-xs">Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Scroll Viewport -->
+            <div class="p-6 md:p-10 flex flex-col items-center gap-8 relative" id="pagesViewport">
+                <div id="documentContainer" class="w-full max-w-4xl space-y-8 relative">
+                    <!-- Document Sheet 1 -->
+                    <div class="parchment-page relative min-h-[1100px] w-full rounded p-12 md:p-16 text-mahogany-900 shadow-2xl border border-amberGlow/10 flex flex-col page-card" data-page-index="1">
+                        
+                        <div class="border-b border-mahogany-900/20 pb-3 mb-6 flex justify-between items-start">
+                            <div>
+                                <input type="text" value="Cardiovascular Pathophysiology" class="text-3xl font-serif font-bold bg-transparent border-none text-mahogany-900 focus:outline-none w-full">
+                                <p class="text-xs font-serif italic text-mahogany-700/70 mt-1">Cozy Antique Library Archive • Medical Lecture Notes</p>
+                            </div>
+                            <span class="text-[11px] font-mono text-mahogany-700 bg-mahogany-900/5 px-2 py-0.5 rounded border border-mahogany-900/10 shrink-0">Page 1</span>
+                        </div>
+
+                        <!-- Editable Content Body -->
+                        <div class="editor-content flex-1 font-serif text-base leading-relaxed space-y-4 focus:outline-none cursor-text" contenteditable="true">
+                            <h2 class="text-xl font-bold text-mahogany-900">1. Cardiac Cycle & Pressure-Volume Loops</h2>
+                            <p>The cardiac cycle comprises ventricular systole and diastole, strictly regulated by electrical depolarization starting at the Sinoatrial (SA) node.</p>
+
+                            <div class="my-4 p-4 rounded-md bg-amberGlow/10 border-l-4 border-amberGlow text-mahogany-900 font-sans text-sm space-y-1" contenteditable="false">
+                                <div class="font-bold flex items-center gap-2 text-ochre text-xs uppercase tracking-wide">
+                                    <i class="fa-solid fa-user-doctor"></i> Clinical Vignette Presentation:
+                                </div>
+                                <div contenteditable="true" class="focus:outline-none italic text-mahogany-800">
+                                    A 58-year-old female presents with crushing chest pain radiating to the left jaw. Troponin I levels are elevated. ECG displays ST-segment elevation in leads II, III, and aVF.
+                                </div>
+                            </div>
+
+                            <p>Left ventricular end-diastolic volume (LVEDV) determines the preload, directly altering stroke volume via the Frank-Starling mechanism.</p>
+
+                            <div class="my-4 font-sans text-xs overflow-x-auto" contenteditable="false">
+                                <table class="w-full border-collapse border border-mahogany-900/20 text-left">
+                                    <thead>
+                                        <tr class="bg-mahogany-900/5 border-b border-mahogany-900/20 text-mahogany-900 font-bold">
+                                            <th class="p-2.5 border-r border-mahogany-900/20">Valvular Lesion</th>
+                                            <th class="p-2.5 border-r border-mahogany-900/20">Auscultation Timing</th>
+                                            <th class="p-2.5">Radiation / Characteristic</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody contenteditable="true" class="divide-y divide-mahogany-900/10 text-mahogany-800">
+                                        <tr>
+                                            <td class="p-2.5 border-r border-mahogany-900/20 font-medium">Aortic Stenosis</td>
+                                            <td class="p-2.5 border-r border-mahogany-900/20">Crescendo-Decrescendo Systolic</td>
+                                            <td class="p-2.5">Radiates to Carotid Arteries</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="p-2.5 border-r border-mahogany-900/20 font-medium">Mitral Regurgitation</td>
+                                            <td class="p-2.5 border-r border-mahogany-900/20">Holosystolic Murmur</td>
+                                            <td class="p-2.5">Radiates to Left Axilla</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <p class="editor-exit-p min-h-[2rem] focus:outline-none"></p>
+                        </div>
+
+                        <!-- Canvas Drawing Overlay -->
+                        <canvas class="drawing-canvas absolute inset-0 w-full h-full pointer-events-auto z-10 rounded"></canvas>
+                    </div>
+                </div>
+
+                <button id="addPageBtn" class="py-2.5 px-5 rounded-lg bg-mahogany-800 hover:bg-mahogany-700 text-amberGlow border border-amberGlow/20 text-xs font-semibold shadow-lg flex items-center gap-2 mb-10">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Append New Parchment Sheet
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Floating Lasso Action Menu -->
+    <div id="lassoActionToolbar" class="hidden fixed z-50 bg-mahogany-800 text-parchment-200 border border-amberGlow/30 rounded-lg shadow-2xl p-1.5 flex items-center gap-2 text-xs">
+        <button id="lassoScaleUp" class="p-1 px-2 hover:bg-mahogany-700 rounded text-amberGlow flex items-center gap-1"><i class="fa-solid fa-magnifying-glass-plus"></i> Scale Up</button>
+        <button id="lassoScaleDown" class="p-1 px-2 hover:bg-mahogany-700 rounded text-amberGlow flex items-center gap-1"><i class="fa-solid fa-magnifying-glass-minus"></i> Scale Down</button>
+        <div class="h-4 w-px bg-mahogany-600"></div>
+        <button id="lassoRecolor" class="p-1 px-2 hover:bg-mahogany-700 rounded text-sage flex items-center gap-1"><i class="fa-solid fa-palette"></i> Color</button>
+        <div class="h-4 w-px bg-mahogany-600"></div>
+        <button id="lassoDelete" class="p-1 px-2 hover:bg-terracotta/20 text-terracotta rounded flex items-center gap-1"><i class="fa-solid fa-trash"></i> Delete</button>
+    </div>
+
+    <script>
+        const state = {
+            mode: 'typing',
+            currentTool: 'pen',
+            drawColor: '#2b1d14',
+            drawSize: 3,
+            theme: 'dark',
+            activeLassoSelection: null,
+            treeData: [
+                {
+                    id: 'f1', name: 'Cardiology', type: 'folder', children: [
+                        { id: 'd1', name: 'Hemodynamics', type: 'folder', children: [
+                            { id: 'l1', name: 'Valvular Murmurs', type: 'doc' }
+                        ]}
+                    ]
+                },
+                {
+                    id: 'f2', name: 'Pulmonology', type: 'folder', children: [
+                        { id: 'l2', name: 'Restrictive Lung Diseases', type: 'doc' }
+                    ]
+                }
+            ]
+        };
+
+        let audioCtx = null;
+        let rainGain = null, fireGain = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupModeSwitcher();
+            setupDrawingAndLassoEngine();
+            setupTreeNavigation();
+            setupRichTextAndMedicalInjectors();
+            setupPageManagement();
+            setupThemeToggle();
+            setupTimer();
+            setupAudioGenerators();
+            setupSyncFeature();
+        });
+
+        function setupModeSwitcher() {
+            const body = document.getElementById('appBody');
+            const typingBtn = document.getElementById('modeTypingBtn');
+            const drawingBtn = document.getElementById('modeDrawingBtn');
+
+            function setMode(mode) {
+                state.mode = mode;
+                body.classList.remove('mode-typing', 'mode-drawing');
+                body.classList.add(`mode-${mode}`);
+
+                if (mode === 'typing') {
+                    typingBtn.className = "px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all bg-amberGlow text-mahogany-900 shadow";
+                    drawingBtn.className = "px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all text-parchment-300 hover:text-amberGlow";
+                    clearLassoSelection();
+                } else {
+                    drawingBtn.className = "px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all bg-amberGlow text-mahogany-900 shadow";
+                    typingBtn.className = "px-3 py-1 rounded-md font-semibold flex items-center gap-1.5 transition-all text-parchment-300 hover:text-amberGlow";
+                }
+            }
+
+            typingBtn.addEventListener('click', () => setMode('typing'));
+            drawingBtn.addEventListener('click', () => setMode('drawing'));
+        }
+
+        function setupAudioGenerators() {
+            const initAudio = () => {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    const bufferSize = 2 * audioCtx.sampleRate;
+                    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                    const output = noiseBuffer.getChannelData(0);
+                    let lastOut = 0.0;
+                    for (let i = 0; i < bufferSize; i++) {
+                        const white = Math.random() * 2 - 1;
+                        output[i] = (lastOut + (0.02 * white)) / 1.02;
+                        lastOut = output[i];
+                        output[i] *= 3.5;
+                    }
+
+                    const rainSource = audioCtx.createBufferSource();
+                    rainSource.buffer = noiseBuffer;
+                    rainSource.loop = true;
+
+                    const rainFilter = audioCtx.createBiquadFilter();
+                    rainFilter.type = 'lowpass';
+                    rainFilter.frequency.value = 1000;
+
+                    rainGain = audioCtx.createGain();
+                    rainGain.gain.value = 0;
+
+                    rainSource.connect(rainFilter);
+                    rainFilter.connect(rainGain);
+                    rainGain.connect(audioCtx.destination);
+                    rainSource.start();
+
+                    const fireSource = audioCtx.createBufferSource();
+                    fireSource.buffer = noiseBuffer;
+                    fireSource.loop = true;
+
+                    const fireFilter = audioCtx.createBiquadFilter();
+                    fireFilter.type = 'bandpass';
+                    fireFilter.frequency.value = 400;
+
+                    fireGain = audioCtx.createGain();
+                    fireGain.gain.value = 0;
+
+                    fireSource.connect(fireFilter);
+                    fireFilter.connect(fireGain);
+                    fireGain.connect(audioCtx.destination);
+                    fireSource.start();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            };
+
+            document.getElementById('rainVol').addEventListener('input', (e) => {
+                initAudio();
+                const val = parseFloat(e.target.value) / 100;
+                if (rainGain) rainGain.gain.setValueAtTime(val * 0.3, audioCtx.currentTime);
+            });
+
+            document.getElementById('fireVol').addEventListener('input', (e) => {
+                initAudio();
+                const val = parseFloat(e.target.value) / 100;
+                if (fireGain) fireGain.gain.setValueAtTime(val * 0.4, audioCtx.currentTime);
+            });
+        }
+
+        function setupSyncFeature() {
+            const syncBtn = document.getElementById('syncCloudBtn');
+            const syncIcon = document.getElementById('syncIcon');
+            const syncText = document.getElementById('syncText');
+
+            syncBtn.addEventListener('click', () => {
+                syncIcon.className = "fa-solid fa-spinner fa-spin text-amberGlow";
+                syncText.innerText = "Syncing...";
+
+                const documentHtml = document.getElementById('documentContainer').innerHTML;
+                localStorage.setItem('cozy_journal_content', documentHtml);
+
+                setTimeout(() => {
+                    syncIcon.className = "fa-solid fa-check text-sage";
+                    syncText.innerText = "Synced!";
+                    setTimeout(() => {
+                        syncIcon.className = "fa-solid fa-cloud-arrow-up";
+                        syncText.innerText = "Sync";
+                    }, 2000);
+                }, 1000);
+            });
+        }
+
+        function setupDrawingAndLassoEngine() {
+            const colorInput = document.getElementById('drawColor');
+            const sizeInput = document.getElementById('drawSize');
+
+            colorInput.addEventListener('change', (e) => state.drawColor = e.target.value);
+            sizeInput.addEventListener('input', (e) => state.drawSize = parseInt(e.target.value));
+
+            function initCanvas(canvas) {
+                const pageCard = canvas.closest('.page-card');
+                const ctx = canvas.getContext('2d');
+                let isInteracting = false;
+                let currentPath = [];
+                let lassoPath = [];
+
+                pageCard._strokes = pageCard._strokes || [];
+
+                function resize() {
+                    const rect = pageCard.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = rect.height;
+                    redrawStrokes(pageCard);
+                }
+
+                resize();
+                window.addEventListener('resize', resize);
+
+                const getPos = (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    return { x: clientX - rect.left, y: clientY - rect.top };
+                };
+
+                const startInteraction = (e) => {
+                    if (state.mode !== 'drawing') return;
+                    isInteracting = true;
+                    const pos = getPos(e);
+
+                    if (state.currentTool === 'lasso') {
+                        lassoPath = [pos];
+                        clearLassoSelection();
+                    } else {
+                        currentPath = [pos];
+                    }
+                };
+
+                const moveInteraction = (e) => {
+                    if (!isInteracting || state.mode !== 'drawing') return;
+                    const pos = getPos(e);
+
+                    if (state.currentTool === 'lasso') {
+                        lassoPath.push(pos);
+                        redrawStrokes(pageCard);
+                        ctx.save();
+                        ctx.strokeStyle = '#e8a855';
+                        ctx.setLineDash([4, 4]);
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(lassoPath[0].x, lassoPath[0].y);
+                        for (let p of lassoPath) ctx.lineTo(p.x, p.y);
+                        ctx.stroke();
+                        ctx.restore();
+                    } else if (state.currentTool === 'eraser') {
+                        pageCard._strokes = pageCard._strokes.filter(stroke => {
+                            return !stroke.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < state.drawSize * 4);
+                        });
+                        redrawStrokes(pageCard);
+                    } else {
+                        currentPath.push(pos);
+                        ctx.lineWidth = state.drawSize;
+                        ctx.lineCap = 'round';
+                        ctx.strokeStyle = state.currentTool === 'highlighter' ? state.drawColor + '55' : state.drawColor;
+                        
+                        ctx.beginPath();
+                        const p1 = currentPath[currentPath.length - 2];
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(pos.x, pos.y);
+                        ctx.stroke();
+                    }
+                };
+
+                const stopInteraction = () => {
+                    if (!isInteracting) return;
+                    isInteracting = false;
+
+                    if (state.currentTool === 'lasso' && lassoPath.length > 5) {
+                        completeLassoSelection(pageCard, lassoPath);
+                    } else if (state.currentTool !== 'lasso' && state.currentTool !== 'eraser' && currentPath.length > 1) {
+                        pageCard._strokes.push({
+                            tool: state.currentTool,
+                            color: state.drawColor,
+                            size: state.drawSize,
+                            points: currentPath
+                        });
+                        redrawStrokes(pageCard);
+                    }
+                };
+
+                canvas.addEventListener('mousedown', startInteraction);
+                canvas.addEventListener('mousemove', moveInteraction);
+                canvas.addEventListener('mouseup', stopInteraction);
+            }
+
+            document.querySelectorAll('.drawing-canvas').forEach(initCanvas);
+            window._initCanvas = initCanvas;
+
+            document.getElementById('toolPen').addEventListener('click', () => setTool('pen', 'toolPen'));
+            document.getElementById('toolHighlighter').addEventListener('click', () => setTool('highlighter', 'toolHighlighter'));
+            document.getElementById('toolEraser').addEventListener('click', () => setTool('eraser', 'toolEraser'));
+            document.getElementById('toolLasso').addEventListener('click', () => setTool('lasso', 'toolLasso'));
+
+            document.getElementById('clearCanvasBtn').addEventListener('click', () => {
+                const activeCard = document.querySelector('.page-card');
+                if (activeCard) {
+                    activeCard._strokes = [];
+                    redrawStrokes(activeCard);
+                    clearLassoSelection();
+                }
+            });
+
+            document.getElementById('lassoDelete').addEventListener('click', () => {
+                if (!state.activeLassoSelection) return;
+                const { pageCard, selectedIndices } = state.activeLassoSelection;
+                pageCard._strokes = pageCard._strokes.filter((_, idx) => !selectedIndices.includes(idx));
+                clearLassoSelection();
+            });
+
+            document.getElementById('lassoRecolor').addEventListener('click', () => {
+                if (!state.activeLassoSelection) return;
+                const { pageCard, selectedIndices } = state.activeLassoSelection;
+                selectedIndices.forEach(idx => {
+                    pageCard._strokes[idx].color = state.drawColor;
+                });
+                redrawStrokes(pageCard);
+            });
+
+            document.getElementById('lassoScaleUp').addEventListener('click', () => scaleSelection(1.15));
+            document.getElementById('lassoScaleDown').addEventListener('click', () => scaleSelection(0.85));
+        }
+
+        function scaleSelection(factor) {
+            if (!state.activeLassoSelection) return;
+            const { pageCard, selectedIndices } = state.activeLassoSelection;
+
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            selectedIndices.forEach(idx => {
+                pageCard._strokes[idx].points.forEach(pt => {
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.y < minY) minY = pt.y;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.y > maxY) maxY = pt.y;
+                });
+            });
+
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+
+            selectedIndices.forEach(idx => {
+                pageCard._strokes[idx].points.forEach(pt => {
+                    pt.x = centerX + (pt.x - centerX) * factor;
+                    pt.y = centerY + (pt.y - centerY) * factor;
+                });
+            });
+
+            redrawStrokes(pageCard);
+        }
+
+        function setTool(tool, btnId) {
+            state.currentTool = tool;
+            document.querySelectorAll('.draw-tool-btn').forEach(b => {
+                b.classList.remove('bg-mahogany-700', 'text-amberGlow');
+            });
+            document.getElementById(btnId).classList.add('bg-mahogany-700', 'text-amberGlow');
+        }
+
+        function redrawStrokes(pageCard) {
+            const canvas = pageCard.querySelector('.drawing-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const strokes = pageCard._strokes || [];
+            strokes.forEach((s, idx) => {
+                if (s.points.length < 2) return;
+                ctx.save();
+                ctx.lineWidth = s.size;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+
+                const isSelected = state.activeLassoSelection && state.activeLassoSelection.selectedIndices.includes(idx);
+                ctx.strokeStyle = isSelected ? '#e8a855' : (s.tool === 'highlighter' ? s.color + '55' : s.color);
+
+                ctx.beginPath();
+                ctx.moveTo(s.points[0].x, s.points[0].y);
+                for (let i = 1; i < s.points.length; i++) {
+                    ctx.lineTo(s.points[i].x, s.points[i].y);
+                }
+                ctx.stroke();
+                ctx.restore();
+            });
+        }
+
+        function completeLassoSelection(pageCard, lassoPath) {
+            const strokes = pageCard._strokes || [];
+            const selectedIndices = [];
+
+            strokes.forEach((stroke, idx) => {
+                if (stroke.points.some(pt => isPointInPoly(pt, lassoPath))) {
+                    selectedIndices.push(idx);
+                }
+            });
+
+            if (selectedIndices.length === 0) return;
+
+            state.activeLassoSelection = { pageCard, selectedIndices };
+            redrawStrokes(pageCard);
+
+            const toolbar = document.getElementById('lassoActionToolbar');
+            const rect = pageCard.getBoundingClientRect();
+            toolbar.style.top = `${rect.top + 60}px`;
+            toolbar.style.left = `${rect.left + 80}px`;
+            toolbar.classList.remove('hidden');
+        }
+
+        function isPointInPoly(pt, poly) {
+            let inside = false;
+            for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+                const xi = poly[i].x, yi = poly[i].y;
+                const xj = poly[j].x, yj = poly[j].y;
+                const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        }
+
+        function clearLassoSelection() {
+            document.getElementById('lassoActionToolbar').classList.add('hidden');
+            if (state.activeLassoSelection) {
+                const card = state.activeLassoSelection.pageCard;
+                state.activeLassoSelection = null;
+                redrawStrokes(card);
+            }
+        }
+
+        function setupTreeNavigation() {
+            const container = document.getElementById('treeContainer');
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggleSidebarBtn');
+
+            toggleBtn.addEventListener('click', () => sidebar.classList.toggle('-ml-64'));
+
+            function renderTree(nodes) {
+                return nodes.map(node => {
+                    if (node.type === 'folder') {
+                        return `
+                            <div class="space-y-0.5">
+                                <div class="flex items-center justify-between p-1.5 rounded hover:bg-mahogany-700/50 cursor-pointer text-xs text-amberGlow/90">
+                                    <span class="flex items-center gap-1.5">
+                                        <i class="fa-solid fa-chevron-down text-[10px] text-parchment-400"></i>
+                                        ${node.name}
+                                    </span>
+                                </div>
+                                <div class="pl-3 space-y-0.5 border-l border-mahogany-700/60 ml-2">
+                                    ${renderTree(node.children)}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    return `
+                        <div class="flex items-center justify-between p-1.5 rounded hover:bg-mahogany-700/80 cursor-pointer text-xs text-parchment-300">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-file-lines text-sage text-[11px]"></i>
+                                ${node.name}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            container.innerHTML = renderTree(state.treeData);
+        }
+
+        function setupRichTextAndMedicalInjectors() {
+            document.querySelectorAll('.editor-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cmd = btn.getAttribute('data-cmd');
+                    const val = btn.getAttribute('data-val') || null;
+                    document.execCommand(cmd, false, val);
+                });
+            });
+
+            document.getElementById('insertVignetteBtn').addEventListener('click', () => {
+                const vignetteHtml = `
+                    <div class="my-4 p-4 rounded-md bg-amberGlow/10 border-l-4 border-amberGlow text-mahogany-900 font-sans text-sm space-y-1" contenteditable="false">
+                        <div class="font-bold flex items-center gap-2 text-ochre text-xs uppercase tracking-wide">
+                            <i class="fa-solid fa-user-doctor"></i> Clinical Vignette Presentation:
+                        </div>
+                        <div contenteditable="true" class="focus:outline-none italic text-mahogany-800">
+                            Enter patient clinical findings, symptoms, and lab diagnostic values here...
+                        </div>
+                    </div><p class="editor-exit-p min-h-[2rem] focus:outline-none"></p>
+                `;
+                document.execCommand('insertHTML', false, vignetteHtml);
+            });
+
+            document.getElementById('insertTableBtn').addEventListener('click', () => {
+                const tableHtml = `
+                    <div class="my-4 font-sans text-xs overflow-x-auto" contenteditable="false">
+                        <table class="w-full border-collapse border border-mahogany-900/20 text-left">
+                            <thead>
+                                <tr class="bg-mahogany-900/5 border-b border-mahogany-900/20 text-mahogany-900 font-bold">
+                                    <th class="p-2 border-r border-mahogany-900/20">Parameter</th>
+                                    <th class="p-2 border-r border-mahogany-900/20">Clinical Finding</th>
+                                    <th class="p-2">Diagnostic Significance</th>
+                                </tr>
+                            </thead>
+                            <tbody contenteditable="true" class="divide-y divide-mahogany-900/10 text-mahogany-800">
+                                <tr>
+                                    <td class="p-2 border-r border-mahogany-900/20 font-medium">Sample Value 1</td>
+                                    <td class="p-2 border-r border-mahogany-900/20">Detail 1</td>
+                                    <td class="p-2">Notes 1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div><p class="editor-exit-p min-h-[2rem] focus:outline-none"></p>
+                `;
+                document.execCommand('insertHTML', false, tableHtml);
+            });
+
+            document.getElementById('insertPostItBtn').addEventListener('click', () => {
+                const activePage = document.querySelector('.page-card');
+                if (!activePage) return;
+
+                const note = document.createElement('div');
+                note.className = 'post-it-note absolute z-20 w-48 p-3 bg-amber-100 border border-amber-300 rounded shadow-lg text-mahogany-900 font-handwriting text-lg leading-tight cursor-move';
+                note.style.top = '120px';
+                note.style.right = '40px';
+
+                note.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-amber-300/60 pb-1 mb-2 handle">
+                        <span class="text-xs font-sans uppercase font-bold text-amber-800 tracking-wider">Quick Note</span>
+                        <button onclick="this.parentElement.parentElement.remove()" class="text-amber-800 hover:text-terracotta text-xs"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div contenteditable="true" class="focus:outline-none min-h-[60px]">
+                        Type clinical key points or reminders...
+                    </div>
+                `;
+
+                activePage.appendChild(note);
+                makeDraggable(note);
+            });
+        }
+
+        function makeDraggable(elmnt) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const handle = elmnt.querySelector('.handle') || elmnt;
+            handle.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        function setupPageManagement() {
+            const addPageBtn = document.getElementById('addPageBtn');
+            const container = document.getElementById('documentContainer');
+
+            addPageBtn.addEventListener('click', () => {
+                const pageCount = container.querySelectorAll('.page-card').length + 1;
+                const newPage = document.createElement('div');
+                newPage.className = 'parchment-page relative min-h-[1100px] w-full rounded p-12 md:p-16 text-mahogany-900 shadow-2xl border border-amberGlow/10 flex flex-col page-card';
+                newPage.setAttribute('data-page-index', pageCount);
+
+                newPage.innerHTML = `
+                    <div class="border-b border-mahogany-900/20 pb-3 mb-6 flex justify-between items-start">
+                        <div>
+                            <input type="text" value="New Medical Topic Section" class="text-3xl font-serif font-bold bg-transparent border-none text-mahogany-900 focus:outline-none w-full">
+                            <p class="text-xs font-serif italic text-mahogany-700/70 mt-1">Cozy Antique Library Archive • Medical Lecture Notes</p>
+                        </div>
+                        <span class="text-[11px] font-mono text-mahogany-700 bg-mahogany-900/5 px-2 py-0.5 rounded border border-mahogany-900/10 shrink-0">Page ${pageCount}</span>
+                    </div>
+
+                    <div class="editor-content flex-1 font-serif text-base leading-relaxed space-y-4 focus:outline-none cursor-text" contenteditable="true">
+                        <p class="editor-exit-p min-h-[2rem] focus:outline-none"></p>
+                    </div>
+
+                    <canvas class="drawing-canvas absolute inset-0 w-full h-full pointer-events-auto z-10 rounded"></canvas>
+                `;
+
+                container.appendChild(newPage);
+                window._initCanvas(newPage.querySelector('.drawing-canvas'));
+            });
+        }
+
+        function setupTimer() {
+            let seconds = 3600;
+            let timerInterval = null;
+            const display = document.getElementById('timerDisplay');
+            const btn = document.getElementById('timerToggleBtn');
+
+            btn.addEventListener('click', () => {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    btn.innerText = 'Start';
+                } else {
+                    btn.innerText = 'Pause';
+                    timerInterval = setInterval(() => {
+                        seconds--;
+                        const mins = Math.floor(seconds / 60);
+                        const secs = seconds % 60;
+                        display.innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                        if (seconds <= 0) clearInterval(timerInterval);
+                    }, 1000);
+                }
+            });
+        }
+
+        function setupThemeToggle() {
+            const themeBtn = document.getElementById('themeToggleBtn');
+            const body = document.getElementById('appBody');
+            const label = document.getElementById('themeLabel');
+
+            themeBtn.addEventListener('click', () => {
+                state.theme = state.theme === 'dark' ? 'light' : 'dark';
+                if (state.theme === 'light') {
+                    body.classList.add('light-theme');
+                    label.innerText = 'Parchment Light';
+                } else {
+                    body.classList.remove('light-theme');
+                    label.innerText = 'Library Mode';
+                }
+            });
+        }
+    </script>
+
+    <!-- Base64 Inline Service Worker for Single-File PWA Installation -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // Standard minimal PWA Service Worker encoded in Base64
+          const swBase64 = 'data:text/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgKGV2ZW50KSA9PiBzZWxmLnNraXBXYWl0aW5nKCkpOwpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2FjdGl2YXRlJywgKGV2ZW50KSA9PiBzZWxmLmNsaWVudHMuY2xhaW0oKSk7CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignZmV0Y2gnLCAoZXZlbnQpID0+IGV2ZW50LnJlc3BvbmRXaXRoKGZldGNoKGV2ZW50LnJlcXVlc3QpKSk7';
+          
+          fetch(swBase64)
+            .then(res => res.blob())
+            .then(blob => {
+              const swUrl = URL.createObjectURL(blob);
+              return navigator.serviceWorker.register(swUrl);
+            })
+            .catch(err => console.error('PWA Registration Info:', err));
+        });
+      }
+    </script>
+</body>
+</html>

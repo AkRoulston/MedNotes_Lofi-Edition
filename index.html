@@ -499,11 +499,12 @@
             const colorInput = document.getElementById('drawColor');
             const sizeInput = document.getElementById('drawSize');
 
-            colorInput.addEventListener('change', (e) => state.drawColor = e.target.value);
-            sizeInput.addEventListener('input', (e) => state.drawSize = parseInt(e.target.value));
+            if (colorInput) colorInput.addEventListener('change', (e) => state.drawColor = e.target.value);
+            if (sizeInput) sizeInput.addEventListener('input', (e) => state.drawSize = parseInt(e.target.value));
 
             function initCanvas(canvas) {
                 const pageCard = canvas.closest('.page-card');
+                if (!pageCard) return;
                 const ctx = canvas.getContext('2d');
                 let isInteracting = false;
                 let currentPath = [];
@@ -523,13 +524,13 @@
 
                 const getPos = (e) => {
                     const rect = canvas.getBoundingClientRect();
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    return { x: clientX - rect.left, y: clientY - rect.top };
+                    const touch = e.touches && e.touches.length > 0 ? e.touches[0] : (e.changedTouches ? e.changedTouches[0] : e);
+                    return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
                 };
 
                 const startInteraction = (e) => {
                     if (state.mode !== 'drawing') return;
+                    if (e.cancelable) e.preventDefault();
                     isInteracting = true;
                     const pos = getPos(e);
 
@@ -543,6 +544,7 @@
 
                 const moveInteraction = (e) => {
                     if (!isInteracting || state.mode !== 'drawing') return;
+                    if (e.cancelable) e.preventDefault();
                     const pos = getPos(e);
 
                     if (state.currentTool === 'lasso') {
@@ -576,7 +578,7 @@
                     }
                 };
 
-                const stopInteraction = () => {
+                const stopInteraction = (e) => {
                     if (!isInteracting) return;
                     isInteracting = false;
 
@@ -596,78 +598,63 @@
                 canvas.addEventListener('mousedown', startInteraction);
                 canvas.addEventListener('mousemove', moveInteraction);
                 canvas.addEventListener('mouseup', stopInteraction);
+
+                canvas.addEventListener('touchstart', startInteraction, { passive: false });
+                canvas.addEventListener('touchmove', moveInteraction, { passive: false });
+                canvas.addEventListener('touchend', stopInteraction);
             }
 
             document.querySelectorAll('.drawing-canvas').forEach(initCanvas);
             window._initCanvas = initCanvas;
 
-            document.getElementById('toolPen').addEventListener('click', () => setTool('pen', 'toolPen'));
-            document.getElementById('toolHighlighter').addEventListener('click', () => setTool('highlighter', 'toolHighlighter'));
-            document.getElementById('toolEraser').addEventListener('click', () => setTool('eraser', 'toolEraser'));
-            document.getElementById('toolLasso').addEventListener('click', () => setTool('lasso', 'toolLasso'));
+            const bindTool = (id, tool) => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('click', () => setTool(tool, id));
+            };
+            bindTool('toolPen', 'pen');
+            bindTool('toolHighlighter', 'highlighter');
+            bindTool('toolEraser', 'eraser');
+            bindTool('toolLasso', 'lasso');
 
-            document.getElementById('clearCanvasBtn').addEventListener('click', () => {
-                const activeCard = document.querySelector('.page-card');
-                if (activeCard) {
-                    activeCard._strokes = [];
-                    redrawStrokes(activeCard);
+            const clearBtn = document.getElementById('clearCanvasBtn');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    const activeCard = document.querySelector('.page-card');
+                    if (activeCard) {
+                        activeCard._strokes = [];
+                        redrawStrokes(activeCard);
+                        clearLassoSelection();
+                    }
+                });
+            }
+
+            const lassoDelete = document.getElementById('lassoDelete');
+            if (lassoDelete) {
+                lassoDelete.addEventListener('click', () => {
+                    if (!state.activeLassoSelection) return;
+                    const { pageCard, selectedIndices } = state.activeLassoSelection;
+                    pageCard._strokes = pageCard._strokes.filter((_, idx) => !selectedIndices.includes(idx));
                     clearLassoSelection();
-                }
-            });
-
-            document.getElementById('lassoDelete').addEventListener('click', () => {
-                if (!state.activeLassoSelection) return;
-                const { pageCard, selectedIndices } = state.activeLassoSelection;
-                pageCard._strokes = pageCard._strokes.filter((_, idx) => !selectedIndices.includes(idx));
-                clearLassoSelection();
-            });
-
-            document.getElementById('lassoRecolor').addEventListener('click', () => {
-                if (!state.activeLassoSelection) return;
-                const { pageCard, selectedIndices } = state.activeLassoSelection;
-                selectedIndices.forEach(idx => {
-                    pageCard._strokes[idx].color = state.drawColor;
                 });
-                redrawStrokes(pageCard);
-            });
+            }
 
-            document.getElementById('lassoScaleUp').addEventListener('click', () => scaleSelection(1.15));
-            document.getElementById('lassoScaleDown').addEventListener('click', () => scaleSelection(0.85));
-        }
-
-        function scaleSelection(factor) {
-            if (!state.activeLassoSelection) return;
-            const { pageCard, selectedIndices } = state.activeLassoSelection;
-
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            selectedIndices.forEach(idx => {
-                pageCard._strokes[idx].points.forEach(pt => {
-                    if (pt.x < minX) minX = pt.x;
-                    if (pt.y < minY) minY = pt.y;
-                    if (pt.x > maxX) maxX = pt.x;
-                    if (pt.y > maxY) maxY = pt.y;
+            const lassoRecolor = document.getElementById('lassoRecolor');
+            if (lassoRecolor) {
+                lassoRecolor.addEventListener('click', () => {
+                    if (!state.activeLassoSelection) return;
+                    const { pageCard, selectedIndices } = state.activeLassoSelection;
+                    selectedIndices.forEach(idx => {
+                        pageCard._strokes[idx].color = state.drawColor;
+                    });
+                    redrawStrokes(pageCard);
                 });
-            });
+            }
 
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
+            const scaleUp = document.getElementById('lassoScaleUp');
+            if (scaleUp) scaleUp.addEventListener('click', () => scaleSelection(1.15));
 
-            selectedIndices.forEach(idx => {
-                pageCard._strokes[idx].points.forEach(pt => {
-                    pt.x = centerX + (pt.x - centerX) * factor;
-                    pt.y = centerY + (pt.y - centerY) * factor;
-                });
-            });
-
-            redrawStrokes(pageCard);
-        }
-
-        function setTool(tool, btnId) {
-            state.currentTool = tool;
-            document.querySelectorAll('.draw-tool-btn').forEach(b => {
-                b.classList.remove('bg-mahogany-700', 'text-amberGlow');
-            });
-            document.getElementById(btnId).classList.add('bg-mahogany-700', 'text-amberGlow');
+            const scaleDown = document.getElementById('lassoScaleDown');
+            if (scaleDown) scaleDown.addEventListener('click', () => scaleSelection(0.85));
         }
 
         function redrawStrokes(pageCard) {

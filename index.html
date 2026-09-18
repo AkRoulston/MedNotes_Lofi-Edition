@@ -486,22 +486,22 @@
             });
         }
 
-        // --- SUPABASE SYNC FEATURE ---
+        // --- SUPABASE SYNC FEATURE (FIXED DRAWING SYNCHRONIZATION) ---
         async function setupSyncFeature() {
             const syncBtn = document.getElementById('syncCloudBtn');
             const syncIcon = document.getElementById('syncIcon');
             const syncText = document.getElementById('syncText');
 
-            // Automatically load data from Supabase on startup
             await loadFromCloud();
 
             syncBtn.addEventListener('click', async () => {
                 syncIcon.className = "fa-solid fa-spinner fa-spin text-amberGlow";
                 syncText.innerText = "Syncing...";
 
+                // Properly serialize page HTML and custom drawing stroke data
                 const pagesData = Array.from(document.querySelectorAll('.page-card')).map(card => ({
                     html: card.innerHTML,
-                    strokes: card._strokes || []
+                    strokes: card._strokes ? JSON.parse(JSON.stringify(card._strokes)) : []
                 }));
 
                 const { error } = await supabaseClient
@@ -541,6 +541,8 @@
                     pageDiv.className = "parchment-page relative min-h-[1100px] w-full rounded p-12 md:p-16 text-mahogany-900 shadow-2xl border border-amberGlow/10 flex flex-col page-card";
                     pageDiv.dataset.pageIndex = index + 1;
                     pageDiv.innerHTML = pageData.html;
+                    
+                    // Attach saved drawing strokes back to the page container
                     pageDiv._strokes = pageData.strokes || [];
                     
                     docContainer.appendChild(pageDiv);

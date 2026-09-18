@@ -10,8 +10,8 @@
     <link rel="icon" type="image/png" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn&s=10">
     <link rel="apple-touch-icon" href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn&s=10">
     
-   <!-- Self-Contained Web App Manifest -->
-<link rel="manifest" href="data:application/manifest+json;utf8,%7B%22name%22%3A%22Cozy%20Library%20Medical%20Journal%22%2C%22short_name%22%3A%22CozyJournal%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23130c08%22%2C%22theme_color%22%3A%22%23130c08%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fencrypted-tbn0.gstatic.com%2Fimages%3Fq%3Dtbn%3AANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn%26s%3D10%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
+    <!-- Self-Contained Web App Manifest -->
+    <link rel="manifest" href="data:application/manifest+json;utf8,%7B%22name%22%3A%22Cozy%20Library%20Medical%20Journal%22%2C%22short_name%22%3A%22CozyJournal%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23130c08%22%2C%22theme_color%22%3A%22%23130c08%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22https%3A%2F%2Fencrypted-tbn0.gstatic.com%2Fimages%3Fq%3Dtbn%3AANd9GcQGNILqSWB0W4zVlZiVM5Gq-gKFfG6RkOrHfW-AEwYopaUebrHu8fEMJSJn%26s%3D10%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fpng%22%2C%22purpose%22%3A%22any%20maskable%22%7D%5D%7D">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -21,10 +21,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Caveat:wght@600&display=swap" rel="stylesheet">
-    
-    <!-- Firebase Libraries -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
     <script>
         tailwind.config = {
@@ -185,7 +181,7 @@
             </button>
             <button id="syncCloudBtn" class="px-2.5 py-1 rounded bg-mahogany-700 hover:bg-mahogany-600 text-sage flex items-center gap-1.5 transition-all">
                 <i class="fa-solid fa-cloud-arrow-up" id="syncIcon"></i>
-                <span id="syncText">Sync</span>
+                <span id="syncText">Save</span>
             </button>
         </div>
     </header>
@@ -371,6 +367,7 @@
         let rainGain = null, fireGain = null;
 
         document.addEventListener('DOMContentLoaded', () => {
+            loadSavedDocument();
             setupModeSwitcher();
             setupDrawingAndLassoEngine();
             setupTreeNavigation();
@@ -381,6 +378,19 @@
             setupAudioGenerators();
             setupSyncFeature();
         });
+
+        function setTool(tool, elementId) {
+            state.currentTool = tool;
+            document.querySelectorAll('.draw-tool-btn').forEach(btn => {
+                btn.classList.remove('bg-mahogany-700', 'text-amberGlow');
+                btn.classList.add('text-parchment-300');
+            });
+            const selectedBtn = document.getElementById(elementId);
+            if (selectedBtn) {
+                selectedBtn.classList.add('bg-mahogany-700', 'text-amberGlow');
+                selectedBtn.classList.remove('text-parchment-300');
+            }
+        }
 
         function setupModeSwitcher() {
             const body = document.getElementById('appBody');
@@ -479,19 +489,45 @@
 
             syncBtn.addEventListener('click', () => {
                 syncIcon.className = "fa-solid fa-spinner fa-spin text-amberGlow";
-                syncText.innerText = "Syncing...";
+                syncText.innerText = "Saving...";
 
                 const documentHtml = document.getElementById('documentContainer').innerHTML;
                 localStorage.setItem('cozy_journal_content', documentHtml);
 
+                const pagesData = [];
+                document.querySelectorAll('.page-card').forEach(card => {
+                    pagesData.push(card._strokes || []);
+                });
+                localStorage.setItem('cozy_journal_strokes', JSON.stringify(pagesData));
+
                 setTimeout(() => {
                     syncIcon.className = "fa-solid fa-check text-sage";
-                    syncText.innerText = "Synced!";
+                    syncText.innerText = "Saved!";
                     setTimeout(() => {
                         syncIcon.className = "fa-solid fa-cloud-arrow-up";
-                        syncText.innerText = "Sync";
+                        syncText.innerText = "Save";
                     }, 2000);
-                }, 1000);
+                }, 800);
+            });
+        }
+
+        function loadSavedDocument() {
+            const savedHtml = localStorage.getItem('cozy_journal_content');
+            const savedStrokes = localStorage.getItem('cozy_journal_strokes');
+
+            if (savedHtml) {
+                document.getElementById('documentContainer').innerHTML = savedHtml;
+            }
+
+            const pageCards = document.querySelectorAll('.page-card');
+            let strokesData = [];
+            try {
+                if (savedStrokes) strokesData = JSON.parse(savedStrokes);
+            } catch(e) {}
+
+            pageCards.forEach((card, index) => {
+                card._strokes = strokesData[index] || [];
+                card.querySelectorAll('.post-it-note').forEach(makeDraggable);
             });
         }
 
@@ -514,8 +550,10 @@
 
                 function resize() {
                     const rect = pageCard.getBoundingClientRect();
-                    canvas.width = rect.width;
-                    canvas.height = rect.height;
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = rect.width * dpr;
+                    canvas.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
                     redrawStrokes(pageCard);
                 }
 
@@ -657,11 +695,39 @@
             if (scaleDown) scaleDown.addEventListener('click', () => scaleSelection(0.85));
         }
 
+        function scaleSelection(factor) {
+            if (!state.activeLassoSelection) return;
+            const { pageCard, selectedIndices } = state.activeLassoSelection;
+            
+            let totalX = 0, totalY = 0, count = 0;
+            selectedIndices.forEach(idx => {
+                pageCard._strokes[idx].points.forEach(p => {
+                    totalX += p.x;
+                    totalY += p.y;
+                    count++;
+                });
+            });
+            
+            if (count === 0) return;
+            const cx = totalX / count;
+            const cy = totalY / count;
+
+            selectedIndices.forEach(idx => {
+                pageCard._strokes[idx].points.forEach(p => {
+                    p.x = cx + (p.x - cx) * factor;
+                    p.y = cy + (p.y - cy) * factor;
+                });
+            });
+
+            redrawStrokes(pageCard);
+        }
+
         function redrawStrokes(pageCard) {
             const canvas = pageCard.querySelector('.drawing-canvas');
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const dpr = window.devicePixelRatio || 1;
+            ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
             const strokes = pageCard._strokes || [];
             strokes.forEach((s, idx) => {
@@ -941,7 +1007,6 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          // Standard minimal PWA Service Worker encoded in Base64
           const swBase64 = 'data:text/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdpbnN0YWxsJywgKGV2ZW50KSA9PiBzZWxmLnNraXBXYWl0aW5nKCkpOwpzZWxmLmFkZEV2ZW50TGlzdGVuZXIoJ2FjdGl2YXRlJywgKGV2ZW50KSA9PiBzZWxmLmNsaWVudHMuY2xhaW0oKSk7CnNlbGYuYWRkRXZlbnRMaXN0ZW5lcignZmV0Y2gnLCAoZXZlbnQpID0+IGV2ZW50LnJlc3BvbmRXaXRoKGZldGNoKGV2ZW50LnJlcXVlc3QpKSk7';
           
           fetch(swBase64)
